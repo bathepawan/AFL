@@ -56,6 +56,22 @@
 #include <sys/ioctl.h>
 #include <sys/file.h>
 
+#include <stdarg.h>
+void printLog(const char *fmt, ...)
+{
+  FILE* pFile = fopen("mylog.txt", "a");
+  if(pFile != NULL)
+  {
+   va_list args;
+   va_start(args, fmt);
+   vfprintf(pFile, fmt, args);
+   va_end(args);
+   fclose(pFile);
+  }
+}
+
+
+
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined (__OpenBSD__)
 #  include <sys/sysctl.h>
 #endif /* __APPLE__ || __FreeBSD__ || __OpenBSD__ */
@@ -881,7 +897,7 @@ static inline u8 has_new_bits(u8* virgin_map) {
 
   u64* current = (u64*)trace_bits;
   u64* virgin  = (u64*)virgin_map;
-
+  printLog("current trace bits = %d virgin_map = %d \n", current, virgin);
   u32  i = (MAP_SIZE >> 3);
 
 #else
@@ -1285,7 +1301,7 @@ static void update_bitmap_score(struct queue_entry* q) {
    all fuzzing steps. */
 
 static void cull_queue(void) {
-
+  printf("Entered %s \n",__func__);
   struct queue_entry* q;
   static u8 temp_v[MAP_SIZE >> 3];
   u32 i;
@@ -4938,7 +4954,7 @@ static u8 could_be_interest(u32 old_val, u32 new_val, u8 blen, u8 check_le) {
    skipped or bailed out. */
 
 static u8 fuzz_one(char** argv) {
-
+  printLog("virgin_bits = %d virgin_crash = %d virgin_tmout = %d \n ", virgin_bits, virgin_crash, virgin_tmout);
   s32 len, fd, temp_len, i, j;
   u8  *in_buf, *out_buf, *orig_in, *ex_tmp, *eff_map = 0;
   u64 havoc_queued,  orig_hit_cnt, new_hit_cnt;
@@ -5044,6 +5060,7 @@ static u8 fuzz_one(char** argv) {
   /************
    * TRIMMING *
    ************/
+  
 
   if (!dumb_mode && !queue_cur->trim_done) {
 
@@ -7704,7 +7721,7 @@ static void save_cmdline(u32 argc, char** argv) {
 /* Main entry point */
 
 int main(int argc, char** argv) {
-
+  printf("Entered %s \n",__func__);
   s32 opt;
   u64 prev_queued = 0;
   u32 sync_interval_cnt = 0, seek_to;
@@ -7977,9 +7994,10 @@ int main(int argc, char** argv) {
     use_argv = get_qemu_argv(argv[0], argv + optind, argc - optind);
   else
     use_argv = argv + optind;
+  
 
   perform_dry_run(use_argv);
-
+  
   cull_queue();
 
   show_init_stats();
@@ -8004,6 +8022,7 @@ int main(int argc, char** argv) {
     u8 skipped_fuzz;
 
     cull_queue();
+
 
     if (!queue_cur) {
 
@@ -8040,9 +8059,8 @@ int main(int argc, char** argv) {
         sync_fuzzers(use_argv);
 
     }
-
+  
     skipped_fuzz = fuzz_one(use_argv);
-
     if (!stop_soon && sync_id && !skipped_fuzz) {
       
       if (!(sync_interval_cnt++ % SYNC_INTERVAL))
@@ -8068,7 +8086,7 @@ int main(int argc, char** argv) {
 stop_fuzzing:
 
   SAYF(CURSOR_SHOW cLRD "\n\n+++ Testing aborted %s +++\n" cRST,
-       stop_soon == 2 ? "programmatically" : "by user");
+       stop_soon == 2 ? "programmatically" : "by user:pbathe");
 
   /* Running for more than 30 minutes but still doing first cycle? */
 
